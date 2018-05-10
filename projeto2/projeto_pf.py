@@ -9,8 +9,8 @@ import numpy as np
 import inspercles # necessário para o a função nb_lidar que simula o laser
 import math
 import mpmath
-
-
+import copy
+from scipy.stats import norm
 largura = 775 # largura do mapa
 altura = 748  # altura do mapa
 
@@ -20,7 +20,7 @@ robot = Particle(largura/2, altura/2, math.pi/4, 1.0)
 # Nuvem de particulas
 particulas = []
 
-num_particulas = 49     
+num_particulas = 625
 
 
 # Os angulos em que o robo simulado vai ter sensores
@@ -71,15 +71,32 @@ def cria_particulas(minx=0, miny=0, maxx=largura, maxy=altura, n_particulas=num_
     part_side_y = altura/grid
     part_center = (part_side_x/2,part_side_y/2)
     particles = []
-
+    
     for i in range(0,grid):
         x = part_center[0]+(part_side_x*i)
         for k in range (0,grid):
             y = part_center[1] +(part_side_y*k)
-            theta = np.random.uniform(-math.pi, math.pi)
+            theta = np.random.uniform(0, 2*math.pi)
             p = Particle(x,y,theta,w=1.0)
             particles.append(p)
 
+
+    # for p in range(num_particulas):
+    #     x = np.random.uniform(minx, maxx)
+    #     y = np.random.uniform(miny, maxy)
+    #     theta = np.random.uniform(0, 2*math.pi)
+    #     p = Particle(x,y,theta,w=1.0)
+    #     particles.append(p)
+
+
+    # teste = Particle(largura/2, altura/2, math.pi/4, 1.0)
+    # particles.append(teste)
+    # particles[0] = teste
+
+    # for i in range(10):
+    #     particles[i] = Particle(largura/2, altura/2, math.pi/4, 1.0)
+        
+    
     return particles
     
 def move_particulas(particulas, movimento):
@@ -93,18 +110,24 @@ def move_particulas(particulas, movimento):
         Você não precisa mover o robô. O código fornecido pelos professores fará isso
         
     """
-    mu_x,sigma_x = movimento[0],abs(movimento[0]*0.15)
-    mu_y,sigma_y = movimento[0],abs(movimento[1]*0.15)
-    mu_theta,sigma_theta = movimento [1],abs(movimento[1]*0.15)
     
-    dx = np.random.normal(mu_x,sigma_x,1)
-    dy = np.random.normal(mu_y,sigma_y,1)
-    dtheta = np.random.normal(mu_theta,sigma_theta,1)
-    speed = [dx,dtheta]
+        
+
+    mu_x,sigma_x = movimento[0],4
+    mu_y,sigma_y = movimento[0],4
+    mu_theta,sigma_theta = movimento[1],math.radians(3)
+    # if movimento[0] == 0 and movimento[1] == 0 :
+    #     sigma_x = 5
+    #     sigma_theta = math.radians(5) 
+
+    # dx = np.random.normal(mu_x,sigma_x,1)
+    # dy = np.random.normal(mu_y,sigma_y,1)
+    # dtheta = np.random.normal(mu_theta,sigma_theta,1)
+    # speed = [dx,dtheta]
     for i in particulas:
         dx = np.random.normal(mu_x,sigma_x,1)
         dtheta = np.random.normal(mu_theta,sigma_theta,1)
-        speed = (dx,dtheta)
+        speed = (dx[0],dtheta[0])
         i.move_relative(speed)
 
     return particulas
@@ -122,22 +145,20 @@ def leituras_laser_evidencias(robot, particulas):
         Você vai precisar calcular para o robo
         
     """
-    sigma = 3
+    sigma = 10
     leitura_robo = inspercles.nb_lidar(robot, angles)
-    alpha = 1
+    alpha = 0
     prob_particulas = []
-
     for p in particulas:
         leituras = inspercles.nb_lidar(p,angles)
-        prob = mpmath.mpf(1)
-        p.w = mpmath.mpf(p.w)
+        prob = 0
+        # p.w = p.w
         for laser in leituras.keys():
-            prob *= ((math.e)**((-(leituras[laser] - leitura_robo[laser]))/(2*(sigma**2))))
+            prob+=norm.pdf(leituras[laser],loc=leitura_robo[laser],scale=sigma)
+            # prob += math.exp(((-(leituras[laser] - leitura_robo[laser]))/(2*(math.pow(sigma,2)))))
         p.w *= prob
-        
-    alpha = 1
-    for robot in particulas:
-        alpha += robot.w
+        alpha += prob
+
     for robot in particulas:
         robot.w /= alpha
    # Voce vai precisar calcular a leitura para cada particula usando inspercles.nb_lidar e depois atualizar as probabilidades
@@ -156,17 +177,30 @@ def reamostrar(particulas, n_particulas = num_particulas):
         
         Use 1/n ou 1, não importa desde que seja a mesma
     """
-    prob_all = []
-    for p in particulas:
-        prob_all.append(p.w)
-    particulas=draw_random_sample(particulas,prob_all,len(particulas))
-    for p in particulas:
-        p.move_particulas(p,1)
-        p.w = 1
+    prob_all = [ p.w for p in particulas]
+
+    particulas = draw_random_sample(particulas,prob_all,num_particulas)
+
+    particulas = [desv(p,5,math.radians(5),True) for p in particulas]
+
 
     return particulas
 
+def desv (p,linear_sigma,angle_sigma,reset_prob=False):
+    if reset_prob:
+        p.w=1
 
+    d = np.random.normal(0,linear_sigma,2)
+    
+    dx=d[0]
+    dy=d[1]
+    dtheta = np.random.normal(0,angle_sigma,1)
+    
+    p.move_angular(dtheta[0])
+    p.x += dx
+    p.y += dy
+
+    return p
     
 
 
