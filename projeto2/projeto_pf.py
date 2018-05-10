@@ -20,7 +20,7 @@ robot = Particle(largura/2, altura/2, math.pi/4, 1.0)
 # Nuvem de particulas
 particulas = []
 
-num_particulas = 625
+num_particulas = 10000
 
 
 # Os angulos em que o robo simulado vai ter sensores
@@ -79,23 +79,6 @@ def cria_particulas(minx=0, miny=0, maxx=largura, maxy=altura, n_particulas=num_
             theta = np.random.uniform(0, 2*math.pi)
             p = Particle(x,y,theta,w=1.0)
             particles.append(p)
-
-
-    # for p in range(num_particulas):
-    #     x = np.random.uniform(minx, maxx)
-    #     y = np.random.uniform(miny, maxy)
-    #     theta = np.random.uniform(0, 2*math.pi)
-    #     p = Particle(x,y,theta,w=1.0)
-    #     particles.append(p)
-
-
-    # teste = Particle(largura/2, altura/2, math.pi/4, 1.0)
-    # particles.append(teste)
-    # particles[0] = teste
-
-    # for i in range(10):
-    #     particles[i] = Particle(largura/2, altura/2, math.pi/4, 1.0)
-        
     
     return particles
     
@@ -116,14 +99,7 @@ def move_particulas(particulas, movimento):
     mu_x,sigma_x = movimento[0],4
     mu_y,sigma_y = movimento[0],4
     mu_theta,sigma_theta = movimento[1],math.radians(3)
-    # if movimento[0] == 0 and movimento[1] == 0 :
-    #     sigma_x = 5
-    #     sigma_theta = math.radians(5) 
 
-    # dx = np.random.normal(mu_x,sigma_x,1)
-    # dy = np.random.normal(mu_y,sigma_y,1)
-    # dtheta = np.random.normal(mu_theta,sigma_theta,1)
-    # speed = [dx,dtheta]
     for i in particulas:
         dx = np.random.normal(mu_x,sigma_x,1)
         dtheta = np.random.normal(mu_theta,sigma_theta,1)
@@ -154,8 +130,8 @@ def leituras_laser_evidencias(robot, particulas):
         prob = 0
         # p.w = p.w
         for laser in leituras.keys():
-            prob+=norm.pdf(leituras[laser],loc=leitura_robo[laser],scale=sigma)
-            # prob += math.exp(((-(leituras[laser] - leitura_robo[laser]))/(2*(math.pow(sigma,2)))))
+            # prob+=norm.pdf(leituras[laser],loc=leitura_robo[laser],scale=sigma)
+            prob += math.exp((-(leituras[laser]-leitura_robo[laser])**2)/(2*math.pow(sigma,2)))
         p.w *= prob
         alpha += prob
 
